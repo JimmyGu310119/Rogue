@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07110f">
+  <meta name="description" content="四十波、四十级、三场首领战。二十三种基础技能、八技能槽、九组联动与十五件催化，拾取反应能推进波次，击败终末炼金核。">
+  <title>霓虹炼金场</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2307110f'/%3E%3Cpath d='M12 6h8v3l-2 4v3l6 9H8l6-9v-3l-2-4z' fill='%23b9ff4a'/%3E%3Ccircle cx='16' cy='21' r='3' fill='%2307110f'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./style.css?v=39">
+</head>
+<body>
+  <main id="game-shell">
+    <canvas id="game" tabindex="0" aria-label="霓虹炼金场游戏画面，WASD 或方向键移动，P 暂停"></canvas>
+
+    <header class="hud" id="hud">
+      <div class="brand"><span class="brand-mark">⌬</span><strong>霓虹炼金场</strong><span class="run-tag">试验 #<b id="runNo">01</b></span></div>
+      <div class="timer-wrap"><span id="timer">00:00</span><small id="phaseText">稳定区</small></div>
+      <div class="hud-actions">
+        <button id="soundBtn" class="icon-btn" aria-label="关闭音效" title="音效">♪</button>
+        <button id="pauseBtn" class="icon-btn" aria-label="暂停游戏" title="暂停">Ⅱ</button>
+      </div>
+    </header>
+
+    <section class="wave-panel" id="wavePanel" aria-label="波次与章节进度">
+      <div class="wave-heading"><b id="waveText">第 1 / 40 波</b><span id="chapterText">第一幕 · 稳态实验</span></div>
+      <div class="wave-progress" id="waveProgress" aria-label="已完成 0 / 40 波"></div>
+      <small id="waveHint">收集反应能，选择升级后推进下一波</small>
+    </section>
+
+    <section class="meters" id="meters" aria-label="角色状态">
+      <div class="meter-block hp-block">
+        <div class="meter-label"><span>生命</span><b id="hpText">100 / 100</b></div>
+        <div class="bar"><i id="hpBar"></i></div>
+      </div>
+      <div class="level-badge"><small>LV.</small><b id="level">0</b></div>
+      <div class="meter-block xp-block">
+        <div class="meter-label"><span>反应能</span><b id="xpText">0 / 8</b></div>
+        <div class="bar"><i id="xpBar"></i></div>
+      </div>
+      <div class="stat-chip"><small>击碎</small><b id="kills">0</b></div>
+      <div class="stat-chip progress-chip"><small>等级进度</small><b id="progressText">0 / 40</b></div>
+      <div class="stat-chip combo-chip"><small>连锁</small><b id="combo">×1.0</b></div>
+    </section>
+
+    <aside class="build-panel" id="buildPanel">
+      <div class="panel-title">当前反应式 <b id="slotCount">0 / 8</b></div>
+      <div id="buildList" class="build-list"><span class="empty-build">等待首次变异…</span></div>
+      <div class="panel-title synergy-title">联动反应</div>
+      <div id="synergyList" class="synergy-list"><span class="empty-build">组合技能可激活联动</span></div>
+      <div class="panel-title synergy-title">炼金催化 <b>1 槽</b></div>
+      <div id="catalystSlot"><span class="empty-build">第 6 / 14 / 24 级可装配</span></div>
+    </aside>
+
+    <div class="boss-wrap hidden" id="bossWrap"><span id="bossTitle">异常聚合体</span><div class="boss-bar"><i id="bossBar"></i></div><small id="bossAttackInfo"></small></div>
+    <div class="boss-countdown hidden" id="bossCountdown" role="status"></div>
+
+    <section class="overlay show" id="startOverlay">
+      <div class="start-card">
+        <div class="eyebrow">ROGUE EXPERIMENT // 40 WAVES</div>
+        <h1>霓虹<br><em>炼金场</em></h1>
+        <p class="intro">每关四十波、四十级构筑、三场首领战。完成第一关后解锁赤潮熔炉；每关重新组装八槽技能，迎战不同敌潮与首领机制。</p>
+        <div class="run-milestones"><span>LV.10 · 预警 10 秒</span><span>LV.20 · 预警 20 秒</span><span>LV.40 · 预警 30 秒</span></div>
+        <div class="controls-row">
+          <div><kbd>WASD</kbd><span>移动</span></div>
+          <div><kbd>自动</kbd><span>攻击</span></div>
+          <div><kbd>P</kbd><span>暂停</span></div>
+        </div>
+        <div class="effects-setting"><label for="effectsStart">特效强度</label><select id="effectsStart"><option value="clean">清爽</option><option value="standard" selected>标准</option><option value="spectacular">炫酷</option></select><small id="effectsStartNote">只改变表现，不改变伤害与敌人预警。</small></div>
+        <div class="campaign-select"><label for="campaignLevelSelect">主线关卡</label><select id="campaignLevelSelect"><option value="1">第一关 · 稳态实验</option><option value="2">第二关 · 赤潮熔炉</option><option value="3">第三关 · 镜界回廊</option><option value="4">第四关 · 折跃枢纽</option><option value="5">第五关 · 哨兵禁区</option><option value="6">第六关 · 风暴天穹</option><option value="7">第七关 · 孢子花园</option><option value="8">第八关 · 冰封断层</option><option value="9">第九关 · 虚空潮汐</option><option value="10">第十关 · 天启熔核</option></select><small id="campaignLevelInfo" role="status">第一关 · 四十波</small></div>
+        <button id="startBtn" class="primary-btn"><span>开始实验</span><small>每关两次重抽 · 6 / 14 / 24 级催化 · 首领战后抽奖</small></button>
+        <button id="quickContinueBtn" class="secondary-btn history-entry-btn" disabled>继续上次实验 · 暂无战场备份</button>
+        <p id="quickSaveNote" class="history-entry-note" role="status">战斗每20秒及关键选择自动备份本机战场。新开正式实验会覆盖续玩档；完整进度仍请导出文件。</p>
+        <button id="equipmentStartBtn" class="secondary-btn history-entry-btn">装备工坊 · 不限装配数量</button>
+        <button id="guideStartBtn" class="secondary-btn history-entry-btn">实验图鉴 · 技能 / 配方 / 怪物</button>
+        <button id="newWeaponsBtn" class="secondary-btn history-entry-btn">试玩新武器 · 满突破天灾爆发</button>
+        <p id="equipmentEntryNote" class="history-entry-note" role="status">0 研究碎片 · 未装配装备</p>
+        <button id="historyStartBtn" class="secondary-btn history-entry-btn">本机实验档案 · 最近十局</button>
+        <p id="historyEntryNote" class="history-entry-note" role="status">本机本浏览器 · 仅保存最近十局正式结算 · 无局外属性</p>
+        <details class="practice-lab"><summary>首领练习室 <small>三秒准备 · 不计正式档案</small></summary>
+          <label for="practiceCampaignSelect">练习关卡<select id="practiceCampaignSelect"></select></label>
+          <div class="practice-selects"><label for="practiceBossSelect">练习首领<select id="practiceBossSelect"></select></label><label for="practiceBuildSelect">练习构筑<select id="practiceBuildSelect"></select></label></div>
+          <div id="practiceCustom" class="practice-custom hidden">
+            <p id="practiceSkillCount" role="status">自选技能 0 / 8</p>
+            <div id="practiceSkillGrid" class="practice-skill-grid" role="group" aria-label="选择练习基础技能"></div>
+            <label for="practiceCatalystSelect">练习催化<select id="practiceCatalystSelect"></select></label>
+            <label for="practiceFusionSelect">练习合体（最终首领可选）<select id="practiceFusionSelect"></select></label>
+            <small>自选1–8种基础技能；合体保留机制、两个槽合为一个、伤害各减15%，可在这里先试效果。</small>
+          </div>
+          <p id="practiceInfo" role="status"></p><p id="practiceRules">六套固定八槽或自选1–8种技能。首名首领用二级技能、第二首领用三级技能、最终首领用突破技能；满血满盾开场。不刷普通敌潮，保留首领召唤和真实招式。不代表正式局平衡或通关成绩。</p>
+          <button id="practiceStartBtn" class="secondary-btn">开始首领练习</button>
+        </details>
+        <p class="touch-note">手机端可拖动屏幕左侧移动</p>
+      </div>
+      <div class="specimen specimen-a">C<small>腐蚀</small></div>
+      <div class="specimen specimen-b">P<small>雷电</small></div>
+      <div class="specimen specimen-c">X<small>裂变</small></div>
+    </section>
+
+    <section class="overlay" id="upgradeOverlay" aria-modal="true" role="dialog" aria-labelledby="upgradeTitle">
+      <div class="upgrade-shell">
+        <div class="eyebrow">MUTATION AVAILABLE</div>
+        <h2 id="upgradeTitle">选择一种变异</h2>
+        <p id="upgradeSubtitle">选择新技能或强化已有技能，最多八种。</p>
+        <div class="upgrade-grid" id="upgradeGrid"></div>
+        <button id="rerollBtn" class="secondary-btn reroll-btn">重抽选项 · 剩余 2 次</button>
+        <small class="shortcut-hint">按 1 / 2 / 3 选择 · R 重抽 · 只重抽常规升级</small>
+      </div>
+    </section>
+
+    <section class="overlay" id="catalystOverlay" aria-modal="true" role="dialog" aria-labelledby="catalystTitle">
+      <div class="upgrade-shell catalyst-shell">
+        <div class="eyebrow">ALCHEMY CATALYST // ONE SLOT</div>
+        <h2 id="catalystTitle">选择炼金催化</h2>
+        <p id="catalystSubtitle">本局生效，独立一槽，不占技能槽。</p>
+        <div class="upgrade-grid" id="catalystGrid"></div>
+        <button id="catalystKeep" class="secondary-btn">暂不装备</button>
+        <small class="shortcut-hint">按 1 / 2 / 3 快速装配 · 选择期间战斗暂停</small>
+      </div>
+    </section>
+
+    <section class="overlay" id="lotteryOverlay" aria-modal="true" role="dialog" aria-labelledby="lotteryTitle">
+      <div class="modal-card lottery-card">
+        <div class="eyebrow" id="lotteryAt">Boss 击败奖励</div>
+        <h2 id="lotteryTitle">幸运反应</h2>
+        <p class="modal-intro">0 / 1 / 3 次强化，各有三分之一概率。</p>
+        <div id="lotteryNumber" class="lottery-number">?</div>
+        <p id="lotteryCaption">解析随机强化…</p>
+        <ul id="lotteryResults" class="lottery-results"></ul>
+        <button id="lotteryContinue" class="primary-btn"><span>继续实验</span></button>
+      </div>
+    </section>
+
+    <section class="overlay" id="pauseOverlay" aria-modal="true" role="dialog" aria-labelledby="pauseTitle">
+      <div class="modal-card pause-card">
+        <div class="eyebrow">REACTION SUSPENDED</div><h2 id="pauseTitle">实验暂停</h2>
+        <div class="modal-scroll pause-scroll">
+          <p class="modal-intro">检查反应式，调整表现，然后继续实验。</p>
+          <p id="pauseProgress" class="pause-progress">波次通过收集反应能并选择升级推进，不按固定时间切换。完成 40 波恰好达到 LV.40。</p>
+          <div class="effects-setting"><label for="effectsPause">特效强度</label><select id="effectsPause"><option value="clean">清爽</option><option value="standard" selected>标准</option><option value="spectacular">炫酷</option></select><small id="effectsPauseNote">只改变表现，不改变伤害与敌人预警。</small></div>
+          <h3 class="section-label">本局完整构筑</h3><div id="pauseBuildList" class="pause-build-list"></div>
+          <h3 class="section-label">已激活联动</h3><div id="pauseSynergyList" class="pause-synergy-list"></div>
+          <p id="pauseCatalystInfo" class="pause-catalyst-info"></p>
+          <p id="pauseEquipmentInfo" class="pause-catalyst-info"></p>
+          <button id="guidePauseBtn" class="secondary-btn">查看实验图鉴（保持暂停）</button>
+        </div>
+        <div class="modal-footer"><button id="resumeBtn" class="primary-btn"><span>继续实验</span></button><button id="practiceExitBtn" class="secondary-btn hidden">返回实验室（结束本次练习）</button></div>
+      </div>
+    </section>
+
+    <section class="overlay" id="endOverlay" aria-modal="true" role="dialog" aria-labelledby="resultTitle">
+      <div class="modal-card result-card">
+        <div class="eyebrow" id="resultEyebrow">EXPERIMENT COMPLETE</div>
+        <h2 id="resultTitle">净化完成</h2>
+        <div class="modal-scroll report-scroll">
+          <p id="resultText" class="modal-intro">反应堆重新稳定。至少现在如此。</p>
+          <p id="historyArchiveNote" class="report-note">仅正式结算会加入本机档案。</p>
+          <div class="result-stats"><div><b id="finalKills">0</b><span>击碎</span></div><div><b id="finalLevel">0</b><span>等级</span></div><div><b id="finalWaves">0 / 40</b><span id="finalWavesLabel">完成波次</span></div><div><b id="finalTime">0:00</b><span>存活</span></div></div>
+          <div class="report-summary"><div><b id="reportTotalDamage">0</b><span>有效总伤害</span></div><div><b id="reportBossDamage">0</b><span>Boss 伤害</span></div><div><b id="reportTaken">0</b><span>受到伤害</span></div><div><b id="reportBlocked">0</b><span>护盾拦截</span></div></div>
+          <h3 class="section-label">伤害来源</h3>
+          <p class="report-note">按实际扣除的生命统计，不含过量伤害；普攻包含被动增益，不重复计数；贯穿炮、相位穿刺等独立来源单列。</p>
+          <div class="report-table-wrap"><table class="report-table"><thead><tr><th>来源 / 占比</th><th>总伤害</th><th>Boss 伤害</th></tr></thead><tbody id="reportDamageRows"></tbody></table></div>
+          <p id="reportDamageEmpty" class="empty-report">本局尚未造成伤害。</p>
+          <h3 class="section-label">首领战</h3><div id="reportBosses" class="report-bosses"></div>
+          <h3 class="section-label">受击复盘 · 最后 5 秒</h3><p id="reportDeath" class="report-death"></p><ul id="reportRecentHits" class="report-hit-list" aria-label="最后五秒受击，由早至晚"></ul>
+          <p id="reportEquipment" class="report-note"></p>
+        </div>
+        <div class="modal-footer result-actions"><button id="restartBtn" class="primary-btn"><span>再来一局</span><small>新的变异序列已经就绪</small></button><button id="nextLevelBtn" class="secondary-btn hidden">进入第二关</button><button id="guideEndBtn" class="secondary-btn">实验图鉴</button><button id="equipmentEndBtn" class="secondary-btn">装备工坊</button><button id="historyEndBtn" class="secondary-btn">查看本机档案</button><button id="menuBtn" class="secondary-btn">返回实验室</button></div>
+      </div>
+    </section>
+
+    <section class="overlay history-overlay" id="historyOverlay" aria-modal="true" role="dialog" aria-labelledby="historyTitle">
+      <div class="modal-card history-card">
+        <div class="eyebrow">LOCAL EXPERIMENT ARCHIVE</div><h2 id="historyTitle">本机实验档案</h2>
+        <div class="modal-scroll history-scroll">
+          <p class="modal-intro">只比较本机本浏览器最近十局正式结算，不提供局外属性。移动文件夹、换浏览器或清理浏览器数据后，档案可能不同或丢失；转发离线包不会携带档案。</p>
+          <p id="historyStatus" class="history-status" role="status"></p>
+          <div id="historyStats" class="report-summary history-stats" aria-label="最近十局统计"></div>
+          <h3 class="section-label">最近实验 · 从新到旧</h3>
+          <div id="historyList" class="history-list"></div>
+        </div>
+        <div class="modal-footer history-footer">
+          <button id="historyCloseBtn" class="primary-btn"><span>返回</span><small>Esc 关闭 · 不重置当前实验</small></button>
+          <button id="historyClearBtn" class="secondary-btn history-clear-btn">清空本机档案</button>
+          <div id="historyClearConfirm" class="history-clear-confirm hidden">
+            <p>确认删除本机最近十局档案？此操作无法撤销，不影响本局或特效偏好。</p>
+            <div><button id="historyCancelClearBtn" class="secondary-btn">取消</button><button id="historyConfirmClearBtn" class="secondary-btn history-clear-btn">确认清空档案</button></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <button id="saveBtn" class="secondary-btn save-entry">存档 / 读取</button>
+    <section class="overlay" id="guideOverlay" aria-modal="true" role="dialog" aria-labelledby="guideTitle">
+      <div class="modal-card guide-shell"><div class="eyebrow">EXPERIMENT CODEX // READ ONLY</div><h2 id="guideTitle">实验图鉴</h2>
+        <div class="guide-controls"><label for="guideTab">分类<select id="guideTab"></select></label><label for="guideSearch">关键词<input id="guideSearch" type="search" maxlength="100" placeholder="例如：穿心、黑洞、药丸" autocomplete="off"></label></div>
+        <p id="guideCount" role="status"></p><div class="modal-scroll"><div id="guideGrid" class="guide-grid"></div></div>
+        <div class="modal-footer"><button id="guideCloseBtn" class="primary-btn">返回实验 · 不改变进度</button></div>
+      </div>
+    </section>
+    <section class="overlay" id="equipmentOverlay" aria-modal="true" role="dialog" aria-labelledby="equipmentTitle">
+      <div class="modal-card equipment-shell"><div class="eyebrow">PERMANENT WORKSHOP // UNLIMITED LOADOUT</div><h2 id="equipmentTitle">装备工坊</h2><p class="equipment-wallet">研究碎片 <b id="equipmentShards">0</b> · 所有不同装备可同时生效，不占技能和催化槽</p><div><button id="equipmentAllBtn" class="secondary-btn">装配全部已解锁装备</button> <button id="equipmentNoneBtn" class="secondary-btn">全部卸下</button></div>
+        <div class="modal-scroll"><p id="equipmentStatus" role="status"></p><div id="equipmentGrid" class="equipment-grid"></div>
+          <details class="equipment-portable"><summary>工坊备份 / 转移到其他电脑</summary><p>读取将替换装备、碎片和首胜记录，请先导出当前档案。关卡解锁保留较高值；不会改变正在结算的战场。</p>
+            <button id="equipmentExportBtn" class="secondary-btn">生成工坊档案</button> <a id="equipmentDownload" class="secondary-btn hidden" download="霓虹炼金场-工坊.json">下载工坊档案</a>
+            <p><label for="equipmentFile">打开工坊文件</label> <input id="equipmentFile" type="file" accept=".json,application/json"></p>
+            <label for="equipmentText">工坊内容（也可粘贴）</label><textarea id="equipmentText" rows="6" spellcheck="false"></textarea>
+            <button id="equipmentImportBtn" class="secondary-btn">读取工坊（替换当前档案）</button>
+          </details><p id="equipmentStorageNote" class="history-entry-note" role="status"></p>
+        </div><div class="modal-footer"><button id="equipmentCloseBtn" class="primary-btn">完成装配 · 返回</button></div>
+      </div>
+    </section>
+    <section class="overlay" id="saveOverlay" aria-modal="true" role="dialog" aria-labelledby="saveTitle">
+      <div class="modal-card"><h2 id="saveTitle">实验存档</h2><div class="modal-scroll">
+        <p id="saveStatus" role="status"></p><p>主菜单、通关或失败后也能保存全局进度：关卡解锁、工坊和最近十局档案。未结束的正式局还保存战场，读取后暂停，选择/抽奖原样保留。全局档案读取后返回选关，不重开已结算战斗。读取会替换文件包含的进度，旧档缺少的工坊/历史不清空；请先备份当前档案。</p>
+        <button id="saveExportBtn" class="secondary-btn">生成当前存档</button> <a id="saveDownload" class="secondary-btn hidden" download="霓虹炼金场-存档.json">下载存档文件</a>
+        <p><label for="saveFile">打开存档文件</label> <input id="saveFile" type="file" accept=".json,application/json"></p>
+        <label for="saveText">存档内容（也可以粘贴）</label><textarea id="saveText" rows="8" spellcheck="false"></textarea>
+      </div><div class="modal-footer"><button id="saveImportBtn" class="secondary-btn">读取进度（替换当前实验）</button><button id="saveCloseBtn" class="primary-btn">返回</button></div></div>
+    </section>
+    <div class="toast" id="toast" role="status"></div>
+    <div class="wave-notice" id="waveNotice" role="status" aria-live="polite"></div>
+    <div class="joystick" id="joystick"><i></i></div>
+  </main>
+  <script src="./core.js?v=39"></script>
+  <script src="./game.js?v=39"></script>
+</body>
+</html>
